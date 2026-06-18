@@ -53,3 +53,7 @@ tree.txt
 
 # Ignore AI models
 /resources/models/*
+
+# Python
+__pycache__/
+*.pyc

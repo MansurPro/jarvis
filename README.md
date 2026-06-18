@@ -44,9 +44,19 @@ But soon, Ukranian and English will be added for the interface, wake-word detect
 ## How to build?
 
 Nothing special was used to build this project.<br>
-You need only Rust and NodeJS installed on your system.<br>
+You need Rust, NodeJS and Python installed on your system.<br>
 Other than that, all you need is to install all the dependencies and then compile the code with `cargo tauri build` command.<br>
 Or run dev with `cargo tauri dev`.
+
+### AI models
+
+The embedding models are **not** stored in this repository (they used to bloat it via Git LFS). Fetch them once after cloning:
+
+```sh
+python download_models.py
+```
+
+This pulls them into `resources/models/` from their upstream [Qdrant FastEmbed](https://huggingface.co/Qdrant) Hugging Face repos (pinned + checksum-verified). Building via `cargo make debug` / `cargo make release` runs this step automatically.
 
 <br><br>
 *Thought you might need some of the platform specific libraries for [PvRecorder](https://github.com/Picovoice/pvrecorder) and [Vosk](https://github.com/alphacep/vosk-api).*

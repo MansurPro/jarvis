@@ -30,8 +30,14 @@ script_runner = "python"
 script_extension = "py"
 script = { file = "post_build.py" }
 
+[tasks.download_models]
+script_runner = "python"
+script_extension = "py"
+script = { file = "download_models.py" }
+
 [tasks.debug]
 dependencies = [
+    "download_models",
     "format",
     "build_debug",
     "post_build"
@@ -39,6 +45,7 @@ dependencies = [
 
 [tasks.release]
 dependencies = [
+    "download_models",
     "format",
     "build_release",
     "post_build"
