@@ -1,75 +1,61 @@
-# JARVIS Voice Assistant (this readme is outdated)
+# Jarvis
 
-![We are NOT limited by the technology of our time!](poster.jpg)
+A real-time voice assistant for macOS. Its brain is **Claude Code** (or **Codex**), so it can
+do anything you could do in a terminal: control apps, music, volume, windows, files, Reminders,
+Calendar, Mail; search the web; write and run code; and kick off long background coding jobs.
 
-`Jarvis` - is a voice assistant made as an experiment using neural networks for things like **STT/TTS/Wake Word/NLU** etc.
-
-The main project challenges we try to achieve is:
- - 100% offline *(no cloud)*
- - Open source *(full transparency)*
- - No data collection *(we respect your privacy)*
-
-Our backend stack is 🦀 **[Rust](https://www.rust-lang.org/)** with ❤️ **[Tauri](https://tauri.app/)**.<br>
-For the frontend we use ⚡️ **[Vite](https://vitejs.dev/)** + 🛠️ **[Svelte](https://svelte.dev/)**.
-
-*Other libraries, tools and packages can be found in source code.*
-
-## Neural Networks
-
-This are the neural networks we are currently using:
-
- - Speech-To-Text
-	 - [Vosk Speech Recognition Toolkit](https://github.com/alphacep/vosk-api) via [Vosk-rs](https://github.com/Bear-03/vosk-rs)
- - Text-To-Speech
-	 - [~~Silero TTS~~](https://github.com/snakers4/silero-models) *(currently not used)*
-	 - [~~Coqui TTS~~](https://github.com/coqui-ai/TTS) *(currently not used)*
-	 - [~~WinRT~~](https://github.com/ndarilek/tts-rs) *(currently not used)*
-	 - [~gTTS~](https://github.com/nightlyistaken/tts_rust) *(currently not used)*
-	 - [~~SAM~~](https://github.com/s-macke/SAM) *(currently not used)*
- - Wake Word
-	 - [Rustpotter](https://github.com/GiviMAD/rustpotter) *(Partially implemented, still WIP)*
-	 - [Picovoice Porcupine](https://github.com/Picovoice/porcupine) via [official SDK](https://github.com/Picovoice/porcupine#rust) *(requires API key)*
-	 - [Vosk Speech Recognition Toolkit](https://github.com/alphacep/vosk-api) via [Vosk-rs](https://github.com/Bear-03/vosk-rs) *(very slow)*
-	 - [~~Snowboy~~](https://github.com/Kitt-AI/snowboy) *(currently not used)*
- - NLU
-	 - Nothing yet.
-- Chat
-	- [~~ChatGPT~~](https://chat.openai.com/) (coming soon)
-
-## Supported Languages
-
-Currently, only Russian language is supported.<br>
-But soon, Ukranian and English will be added for the interface, wake-word detection and speech recognition.
-
-## How to build?
-
-Nothing special was used to build this project.<br>
-You need Rust, NodeJS and Python installed on your system.<br>
-Other than that, all you need is to install all the dependencies and then compile the code with `cargo tauri build` command.<br>
-Or run dev with `cargo tauri dev`.
-
-### AI models
-
-The embedding models are **not** stored in this repository (they used to bloat it via Git LFS). Fetch them once after cloning:
-
-```sh
-python download_models.py
+```
+"Hey Jarvis" ──► Whisper (MLX, on-device) ──► Claude Code session ──► spoken reply (Kokoro neural TTS)
+ openWakeWord        ~0.7 s                    one persistent process     sentence by sentence
 ```
 
-This pulls them into `resources/models/` from their upstream [Qdrant FastEmbed](https://huggingface.co/Qdrant) Hugging Face repos (pinned + checksum-verified). Building via `cargo make debug` / `cargo make release` runs this step automatically.
+* **Wake word**: openWakeWord "hey jarvis", fully offline.
+* **Speech-to-text**: Whisper large-v3-turbo on Apple Silicon (MLX), English, Russian and ~100 more languages.
+* **Brain**: one long-lived `claude -p` stream-json session. It needs no per-turn startup, keeps
+  memory across the conversation, and streams its answer, so Jarvis starts speaking right away.
+  Uses your existing Claude Code login (no API key).
+* **Sees your screen**: "what's this error?", "summarise what I'm reading" (needs Screen Recording permission for your terminal).
+* **Voice**: Kokoro-82M neural TTS, on-device, with a British male butler voice (`bm_george`). Try
+  `--voice bm_lewis`, `bm_daniel` or `bm_fable`; `--voice Daniel` uses plain macOS `say`. Russian replies use macOS `Milena`.
+* **Barge-in**: say "hey Jarvis" while it's talking or working to cut it off.
+* **Follow-up**: after a reply it keeps listening for 6 s, so you can keep talking without the wake word.
+* **Background jobs**: "hand this to a background Claude Code agent: …" starts a separate headless
+  agent that keeps running even if you quit Jarvis, and announces itself aloud when it's done. You can
+  start one yourself: `uv run jarvis.py --job <name> <dir> "<task>" [--agent codex]`. Logs are in `~/.jarvis/jobs/`.
 
-<br><br>
-*Thought you might need some of the platform specific libraries for [PvRecorder](https://github.com/Picovoice/pvrecorder) and [Vosk](https://github.com/alphacep/vosk-api).*
+## Run
 
-## Author
+Requires macOS on Apple Silicon, [uv](https://docs.astral.sh/uv/), and `claude` (or `codex`) logged in.
 
-Abraham Tugalov
+```sh
+uv run jarvis.py                 # voice mode (first run downloads ~1.6 GB Whisper + 350 MB voice models)
+uv run jarvis.py --text          # type instead of talk
+uv run jarvis.py --agent codex   # Codex as the brain (slower, ~10-20 s per turn)
+uv run jarvis.py --model opus    # smarter, slower; default is sonnet
+uv run jarvis.py --lang ru       # pin recognition language
+```
 
-## Python version?
-Old version of Jarvis was built with Python.<br>
-The last Python version commit can be found [here](https://github.com/Priler/jarvis/tree/943efbfbdb8aeb5889fa5e2dc7348ca4ea0b81df).
+Grant your terminal microphone access when macOS asks. The first time Jarvis scripts an app,
+macOS also asks for Automation permission.
 
-## License
+Tuning knobs (`--help` for all): `--wake-threshold` (false wakes ↔ missed wakes), `--mic-threshold`
+and `--silence` (end-of-speech detection), `--followup 0` (disable the follow-up window),
+`--mic N` (`uv run python -m sounddevice` lists devices).
 
-[Attribution-NonCommercial-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/)<br>
-See LICENSE.txt file for more details.
+The current conversation is a normal Claude Code session. Jarvis prints its id, and
+`claude --resume <id>` shows everything it did.
+
+## Safety
+
+The agent runs with `bypassPermissions` in your home folder: it can do anything you can.
+Its instructions make it ask for a spoken "yes" before deleting, sending, purchasing, pushing or
+shutting down, but speech recognition can mishear. Use headphones (so it doesn't hear itself),
+and don't leave it listening in a room with a TV on.
+
+## Tests
+
+```sh
+uv run python test_jarvis.py
+```
+
+`legacy/` (git-ignored) holds the original 2023 Windows Python version.
