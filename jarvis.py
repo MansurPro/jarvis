@@ -72,7 +72,22 @@ def load_kokoro():
     return Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
 
 
-class Voice:
+class Sentences:
+    """Turns streamed text into whole sentences; subclasses decide what say() does with each."""
+    buf = ""
+
+    def feed(self, text):
+        self.buf += text
+        while m := re.search(r"(?<=[.!?…:;])\s+|\n+", self.buf):
+            self.say(self.buf[: m.start()])
+            self.buf = self.buf[m.end():]
+
+    def flush(self):
+        self.say(self.buf)
+        self.buf = ""
+
+
+class Voice(Sentences):
     """Sentence-streaming TTS. Kokoro voices (names like bm_george) or any macOS `say` voice.
     Synthesis of the next sentence overlaps playback of the current one. stop() cancels everything."""
 
@@ -86,16 +101,6 @@ class Voice:
     @property
     def busy(self):
         return self.q.unfinished_tasks + self.out.unfinished_tasks > 0
-
-    def feed(self, text):
-        self.buf += text
-        while m := re.search(r"(?<=[.!?…:;])\s+|\n+", self.buf):
-            self.say(self.buf[: m.start()])
-            self.buf = self.buf[m.end():]
-
-    def flush(self):
-        self.say(self.buf)
-        self.buf = ""
 
     def say(self, s):
         if s := clean(s):
@@ -145,11 +150,11 @@ class Voice:
 class Claude:
     """One long-lived `claude -p` stream-json session: no per-turn startup cost, full memory."""
 
-    def __init__(self, model, cwd, on_text, on_done):
+    def __init__(self, model, cwd, on_text, on_done, system=SYSTEM, extra=()):
         self.on_text, self.on_done, self.pending = on_text, on_done, 0
         cmd = ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json",
                "--verbose", "--include-partial-messages", "--permission-mode", "bypassPermissions",
-               "--append-system-prompt", SYSTEM]
+               "--append-system-prompt", system, *extra]
         if model:
             cmd += ["--model", model]
         self.cmd, self.cwd = cmd, cwd
@@ -404,10 +409,19 @@ def main():
     ap.add_argument("--mic-threshold", type=float, default=300, help="minimum RMS that counts as speech")
     ap.add_argument("--silence", type=float, default=0.8, help="seconds of silence that end a request")
     ap.add_argument("--followup", type=float, default=6, help="seconds to keep listening after a reply (0 = off)")
+    ap.add_argument("--serve", action="store_true", help="run the backend for the Jarvis phone apps")
+    ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--public-url", help="URL phones use to reach this Mac, e.g. a Tailscale address")
     ap.add_argument("--job", nargs=3, metavar=("NAME", "DIR", "TASK"), help="run TASK in a detached background agent")
     args = ap.parse_args()
     if args.job:
         return spawn_job(*args.job, args.agent)
+    if args.serve:
+        import phone
+        try:
+            return phone.serve(args.port, args.model or None, args.cwd, args.public_url)
+        except KeyboardInterrupt:
+            return print("\nGoodbye, sir.")
 
     tts = Voice(args.voice, args.ru_voice, args.rate, args.mute)
     Agent = Claude if args.agent == "claude" else Codex

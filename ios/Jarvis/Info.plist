@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Jarvis</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ai.jarvis.pair</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>jarvis</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>So Jarvis can play, pause and skip music.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>So Jarvis can read and add calendar events.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>So Jarvis can read and add calendar events.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>So Jarvis can switch the flashlight on and off.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>So Jarvis can find people's numbers when you ask.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Jarvis talks to the Jarvis server on your Mac.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>So Jarvis can tell where you are and give directions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Jarvis listens when you talk to it.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>So Jarvis can add reminders.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>So Jarvis can add reminders.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Jarvis turns your speech into text on the device.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+</dict>
+</plist>

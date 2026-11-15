@@ -12,4 +12,11 @@ assert said == ["Hello there, sir."], said
 v.feed(" past noon!\nNext")
 v.flush()
 assert said == ["Hello there, sir.", "The time is 3.5 hours past noon!", "Next"], said
-print("ok")
+print("voice ok")
+
+from phone import tool_args  # Claude may nest phone-tool args, flatten them, or send a JSON string
+assert tool_args({"action": "contacts", "query": "Kate"}) == {"query": "Kate"}
+assert tool_args({"action": "contacts", "args": {"query": "Kate"}}) == {"query": "Kate"}
+assert tool_args({"action": "contacts", "args": '{"query": "Kate"}'}) == {"query": "Kate"}
+assert tool_args({"action": "battery"}) == {}
+print("phone ok")

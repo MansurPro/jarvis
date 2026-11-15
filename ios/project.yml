@@ -1,0 +1,47 @@
+name: Jarvis
+options:
+  bundleIdPrefix: ai.jarvis
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_STYLE: Automatic
+    # Set your Apple ID team in Xcode (Signing & Capabilities) to install on your iPhone.
+    DEVELOPMENT_TEAM: ""
+targets:
+  Jarvis:
+    type: application
+    platform: iOS
+    sources: [Jarvis]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.jarvis.app
+        INFOPLIST_KEY_CFBundleDisplayName: Jarvis
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Jarvis/Info.plist
+      properties:
+        CFBundleDisplayName: Jarvis
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIUserInterfaceStyle: Dark
+        CFBundleURLTypes:
+          - CFBundleURLName: ai.jarvis.pair
+            CFBundleURLSchemes: [jarvis]
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true   # the Mac is reached over plain http on your LAN / Tailscale
+        NSLocalNetworkUsageDescription: Jarvis talks to the Jarvis server on your Mac.
+        NSMicrophoneUsageDescription: Jarvis listens when you talk to it.
+        NSSpeechRecognitionUsageDescription: Jarvis turns your speech into text on the device.
+        NSContactsUsageDescription: So Jarvis can find people's numbers when you ask.
+        NSCalendarsFullAccessUsageDescription: So Jarvis can read and add calendar events.
+        NSCalendarsUsageDescription: So Jarvis can read and add calendar events.
+        NSRemindersFullAccessUsageDescription: So Jarvis can add reminders.
+        NSRemindersUsageDescription: So Jarvis can add reminders.
+        NSLocationWhenInUseUsageDescription: So Jarvis can tell where you are and give directions.
+        NSAppleMusicUsageDescription: So Jarvis can play, pause and skip music.
+        NSCameraUsageDescription: So Jarvis can switch the flashlight on and off.

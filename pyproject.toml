@@ -8,5 +8,6 @@ dependencies = [
     "mlx-whisper>=0.4.3",
     "numpy>=2.5.4",
     "openwakeword>=0.4.0",
+    "qrcode>=8.2",
     "sounddevice>=0.5.6",
 ]

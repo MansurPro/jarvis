@@ -4,3 +4,11 @@ __pycache__/
 legacy/
 *.env
 .env
+# mobile build output
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/build/
+ios/Jarvis.xcodeproj/xcuserdata/
+ios/Jarvis.xcodeproj/project.xcworkspace/xcuserdata/

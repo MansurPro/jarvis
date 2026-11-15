@@ -1,6 +1,6 @@
 # Jarvis
 
-A real-time voice assistant for macOS. Its brain is **Claude Code** (or **Codex**), so it can
+A real-time voice assistant for macOS, iPhone and Android. Its brain is **Claude Code** (or **Codex**), so it can
 do anything you could do in a terminal: control apps, music, volume, windows, files, Reminders,
 Calendar, Mail; search the web; write and run code; and kick off long background coding jobs.
 
@@ -44,6 +44,64 @@ and `--silence` (end-of-speech detection), `--followup 0` (disable the follow-up
 
 The current conversation is a normal Claude Code session. Jarvis prints its id, and
 `claude --resume <id>` shows everything it did.
+
+## Phones (iOS and Android)
+
+Jarvis also runs on your phones as a Google-Assistant-style app. Claude Code on your Mac stays the
+brain; the phone does the listening, the speaking, and the phone-side actions.
+
+```
+phone app ──"what's on my calendar?"──► jarvis.py --serve (Mac) ──► Claude Code
+          ◄──── phone tool call ─────── (MCP)  ◄── "calendar_events {days: 1}"
+          ──── result ─────────────────►       ──► spoken answer streamed back
+```
+
+**1. Start the backend on the Mac**
+
+```sh
+uv run jarvis.py --serve
+```
+
+It prints a QR code. Scan it with the phone's Camera app to pair; the phone needs to reach the Mac
+(same Wi-Fi). Away from home, install [Tailscale](https://tailscale.com) on both and run
+`uv run jarvis.py --serve --public-url http://<mac-tailscale-ip>:8765`.
+
+**2a. Android** (`android/`, Kotlin, no third-party libraries)
+
+```sh
+cd android && ./gradlew assembleDebug        # needs JDK 17 + Android SDK
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+Then in the app's ⚙: make Jarvis the **default digital assistant** (the assist gesture, a long press
+on power or a swipe up from a corner, opens Jarvis already listening), and optionally enable **screen
+control** (accessibility) and **notification access**.
+
+Android can: text (sends directly), call, search contacts, read and add calendar events, set
+alarms and timers, get location, open apps, open links, navigate, control media and volume, toggle
+the flashlight, check battery, use the clipboard, read notifications and texts, and **operate other
+apps** by reading the screen and tapping, typing and scrolling ("open Settings and turn on hotspot").
+
+**2b. iPhone** (`ios/`, SwiftUI)
+
+Open `ios/Jarvis.xcodeproj` in Xcode, pick your Apple ID team under Signing & Capabilities (a free
+account works; the app then needs re-installing every 7 days), plug in the iPhone and press Run.
+`ios/project.yml` regenerates the project with `xcodegen` if you change it.
+
+* "Hey Siri, ask Jarvis": Siri asks what you want, Claude answers, Siri reads it out.
+* Action button or Back Tap: set it to the "Talk to Jarvis" shortcut for a hands-free conversation.
+
+iOS can: search contacts, read and add calendar events, add reminders, set timers (as notifications),
+get location, open apps and links, navigate, play/pause/skip Apple Music, toggle the flashlight,
+check battery, use the clipboard, and **run any of your Shortcuts** (the way to reach HomeKit,
+Focus modes, settings and anything else Apple lets Shortcuts do). Calls and texts open filled in;
+iOS requires you to tap Call or Send yourself, and no app can replace Siri or read other apps' screens.
+
+On both platforms, everything the Mac can do still works from the phone: "is my Mac's build done?",
+"play music on my Mac", "summarize the PDF in my Downloads".
+
+**Security:** the phone talks to the Mac over plain HTTP with a random token (`~/.jarvis/token`;
+delete it to revoke all phones). Keep it on your own network or Tailscale; don't port-forward it.
 
 ## Safety
 
