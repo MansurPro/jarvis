@@ -1,0 +1,64 @@
+:root {
+  --void: #02070c;
+  --deep: #061521;
+  --arc: #63e3ff;
+  --arc-hot: #e8fbff;
+  --arc-soft: rgba(99, 227, 255, 0.18);
+  --line: rgba(99, 227, 255, 0.16);
+  --line-strong: rgba(99, 227, 255, 0.38);
+  --text: #d6f4fc;
+  --muted: #86b9c9;
+  --amber: #ffb648;
+  --red: #ff6b5e;
+  --ok: #7df2c6;
+  --wide: 'Michroma', 'Eurostile', 'Saira', sans-serif;
+  --sans: 'Saira', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+body {
+  /* the lab: a faint holographic grid under a cyan bloom where the sphere sits */
+  background:
+    radial-gradient(60vmin 60vmin at 50% 46%, rgba(99, 227, 255, 0.10), transparent 70%),
+    linear-gradient(var(--void), var(--void));
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(99, 227, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 227, 255, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 46%, #000 0, transparent 75%);
+}
+
+button, input { font: inherit; color: inherit; }
+
+:focus-visible { outline: 1px solid var(--arc); outline-offset: 3px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

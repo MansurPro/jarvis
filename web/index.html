@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#02070c" />
+    <meta name="description" content="JARVIS: talk to Claude Code on your Mac." />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <title>J.A.R.V.I.S.</title>
+  </head>
+  <body>
+    <!--
+      DIRECTION CONTRACT: JARVIS HUD, "voice sphere"
+      World: Stark-lab hologram. Near-black void, one cyan light (#63e3ff) that runs white-hot when active, amber only for
+        attention. Michroma for the wordmark and state, Saira for speech, JetBrains Mono only for real commands.
+      First viewport: the sphere alone, breathing, with thin orbital rings; corner readouts show only true state.
+      Signature: a WebGL sphere of light that ripples with your voice, swirls while working, pulses with its own voice;
+        every action leaves it as a callout on the right, the conversation reads as telemetry on the left.
+      Motion: one boot moment (scattered light assembles into the sphere, rings draw in), then motion only from state.
+      Risk: WebGL load on weak phones (fewer points, CSS fallback); the HUD must never invent telemetry.
+    -->
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

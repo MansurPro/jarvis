@@ -1,12 +1,16 @@
-"""Phone backend: lets the Jarvis iOS/Android apps talk to the Claude Code brain on this Mac.
+"""Phone + HUD backend: lets the Jarvis iOS/Android apps and the web HUD talk to the Claude Code brain on this Mac.
 
     phone app ──POST /ask──► this server ──► Claude Code session ──► reply streamed back as NDJSON
                 ◄─{"type":"tool"}── Claude calls the `phone` MCP tool (served here at /mcp)
                 ──POST /tool_result──► the tool call returns to Claude
 
-Run with `uv run jarvis.py --serve`. Pair a phone by scanning the QR code it prints.
+Run with `uv run jarvis.py --serve`. Pair a phone by scanning the QR code it prints; open the HUD link in Chrome.
 """
+import io
 import json
+import mimetypes
+import re
+import wave
 import queue
 import secrets
 import socket
@@ -19,6 +23,8 @@ from urllib.parse import urlencode
 from jarvis import SYSTEM, Claude, Sentences, clean
 
 TOKEN_FILE = Path.home() / ".jarvis" / "token"
+WEB = Path(__file__).resolve().parent / "web" / "dist"   # built HUD (cd web && npm run build)
+WAKE_MODELS = ("melspectrogram.onnx", "embedding_model.onnx", "hey_jarvis_v0.1.onnx")
 
 ACTIONS = """\
 send_sms {to, body}: text someone (Android sends it; iOS opens a filled-in message for the user to tap Send)
@@ -57,7 +63,7 @@ PHONE_TOOL = {
 }
 
 PHONE_SYSTEM = SYSTEM + """
-The user is talking to you from their phone through the Jarvis app; your replies are spoken by the phone. Your shell, files and AppleScript still run on their Mac, so you can control both.
+The user is talking to you through a Jarvis app: a phone app or the web HUD; your replies are spoken there. Each message starts with the device it came from. Your shell, files and AppleScript still run on their Mac, so you can control both.
 Anything on the phone itself (texts, calls, contacts, calendar, reminders, alarms, timers, location, apps, music, notifications, flashlight, what's on its screen) goes through the `phone` tool. Each message starts with the phone's platform, local time and supported actions.
 To operate another app on Android: open_app, then screen_read, screen_tap and screen_type step by step, reading the screen again after each step.
 Messages, calls and anything sent to other people still need a spoken yes first.
@@ -108,6 +114,16 @@ class Brain:
                                         "headers": {"Authorization": f"Bearer {tok}"}}}}
         self.agent = Claude(model, cwd, self._text, self._done, system=PHONE_SYSTEM,
                             extra=["--mcp-config", json.dumps(mcp)])
+        self.agent.on_tool = self._tool
+        self.agent.on_tool_end = self._tool_end
+
+    def _tool(self, tid, name, detail):  # every action Claude takes, for the HUD's activity feed
+        if self.turn:
+            self.turn.events.put({"type": "activity", "id": tid, "name": name, "detail": detail})
+
+    def _tool_end(self, tid, error):
+        if self.turn:
+            self.turn.events.put({"type": "activity_end", "id": tid, "error": error})
 
     def _text(self, t):
         if self.turn:
@@ -125,8 +141,8 @@ class Brain:
                 self.agent.interrupt()
             self.turn = Turn()
             actions = ", ".join(device.get("actions", [])) or "none"
-            head = (f"[Phone: {device.get('platform', '?')} {device.get('model', '')}; "
-                    f"local time {device.get('time', '?')}; phone actions: {actions}]")
+            head = (f"[Device: {device.get('platform', '?')} {device.get('model', '')}; "
+                    f"local time {device.get('time', '?')}; device actions: {actions}]")
             self.agent.ask(f"{head}\n{text}")
             return self.turn
 
@@ -171,6 +187,33 @@ def transcribe(pcm):
     return text
 
 
+_kokoro, _kokoro_lock = [], threading.Lock()
+
+
+def speak(text):
+    """Kokoro neural voice (same as Mac voice mode) as WAV bytes; None when the browser should speak instead."""
+    if not text.strip() or re.search("[а-яё]", text, re.I):
+        return None
+    import os
+    from jarvis import load_kokoro
+    with _kokoro_lock:
+        try:
+            if not _kokoro:
+                _kokoro.append(load_kokoro())
+            samples, rate = _kokoro[0].create(text, voice=os.getenv("JARVIS_VOICE", "bm_george"), speed=1.05, lang="en-gb")
+        except Exception as e:  # missing model, odd input: the HUD uses the browser's voice instead
+            print(f"\033[2m  (tts: {e})\033[0m", flush=True)
+            return None
+    import numpy as np
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes((np.clip(samples, -1, 1) * 32767).astype(np.int16).tobytes())
+    return buf.getvalue()
+
+
 def handler(brain, tok):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -194,9 +237,32 @@ def handler(brain, tok):
             return json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
 
         def do_GET(self):
-            if self.path == "/health":
+            path = self.path.split("?")[0]
+            if path == "/health":
                 return self._json(200, {"ok": True}) if self._authed() else None
-            self._json(405 if self.path == "/mcp" else 404, {"error": "not here"})
+            if path == "/mcp":
+                return self._json(405, {"error": "POST only"})
+            if path.startswith("/models/") and path[8:] in WAKE_MODELS:  # wake-word models for the HUD
+                import openwakeword
+                return self._file(Path(openwakeword.__file__).parent / "resources" / "models" / path[8:])
+            # the HUD: static files, no auth (the API calls carry the token)
+            f = (WEB / path.lstrip("/")).resolve()
+            if path != "/" and f.is_file() and f.is_relative_to(WEB):
+                return self._file(f)
+            if (WEB / "index.html").exists():
+                return self._file(WEB / "index.html")
+            self._json(404, {"error": "HUD not built: cd web && npm install && npm run build"})
+
+        def _file(self, f):
+            body = f.read_bytes()
+            kind = {".mjs": "text/javascript", ".wasm": "application/wasm", ".onnx": "application/octet-stream"}.get(
+                f.suffix) or mimetypes.guess_type(f.name)[0] or "application/octet-stream"
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache" if f.name == "index.html" else "max-age=86400")
+            self.end_headers()
+            self.wfile.write(body)
 
         def do_POST(self):
             if not self._authed():
@@ -204,6 +270,17 @@ def handler(brain, tok):
             if self.path == "/transcribe":
                 return self._json(200, {"text": transcribe(self.rfile.read(int(self.headers.get("Content-Length") or 0)))})
             body = self._body()
+            if self.path == "/speak":
+                audio = speak(body.get("text", ""))
+                if audio is None:  # Russian, or no voice model: the client falls back to its own voice
+                    self.send_response(204)
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "audio/wav")
+                self.send_header("Content-Length", str(len(audio)))
+                self.end_headers()
+                return self.wfile.write(audio)
             if self.path == "/ask":
                 return self._ask(body)
             if self.path == "/tool_result":
@@ -231,6 +308,8 @@ def handler(brain, tok):
                         ev = {"type": "ping"}  # keeps mobile networks from dropping a long tool run
                     if ev["type"] == "text":
                         print(f"\033[36mjarvis>\033[0m {ev['text']}", flush=True)
+                    elif ev["type"] == "activity":
+                        print(f"\033[2m  ⚙ {ev['name']}: {ev['detail'][:100]}\033[0m", flush=True)
                     self.wfile.write((json.dumps(ev) + "\n").encode())
                     self.wfile.flush()
                     if ev["type"] == "done" or turn is not brain.turn:
@@ -272,6 +351,7 @@ def serve(port, model, cwd, public_url=None):
     url = public_url or f"http://{lan_ip()}:{port}"
     brain = Brain(port, tok, model, cwd)
     threading.Thread(target=transcribe, args=(bytes(32000),), daemon=True).start()  # load Whisper before a phone needs it
+    threading.Thread(target=speak, args=("Ready.",), daemon=True).start()  # and the voice
     server = ThreadingHTTPServer(("0.0.0.0", port), handler(brain, tok))
     pair = "jarvis://pair?" + urlencode({"url": url, "token": tok})
     print(f"Jarvis phone server on {url}\nScan with your phone's camera to pair (or enter the URL and token in the app):\n")
@@ -283,5 +363,6 @@ def serve(port, model, cwd, public_url=None):
     except ImportError:
         pass
     print(f"\n  URL:   {url}\n  Token: {tok}\n  Link:  {pair}\n")
+    print(f"HUD (open in Chrome on this Mac):  http://localhost:{port}/#token={tok}\n")
     print("Away from home? Install Tailscale on the Mac and phone and pass --public-url http://<mac-tailscale-ip>:8765")
     server.serve_forever()

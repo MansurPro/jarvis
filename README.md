@@ -45,6 +45,29 @@ and `--silence` (end-of-speech detection), `--followup 0` (disable the follow-up
 The current conversation is a normal Claude Code session. Jarvis prints its id, and
 `claude --resume <id>` shows everything it did.
 
+## The HUD (Iron Man-style web interface)
+
+```sh
+cd web && npm install && npm run build   # once, and after changing the HUD
+cd .. && uv run jarvis.py --serve        # prints a "HUD" link with your token
+```
+
+Open the printed `http://localhost:8765/#token=…` link in Chrome and click the sphere (allow the
+microphone when Chrome asks).
+
+* **The voice sphere** in the centre is JARVIS: a WebGL cloud of light that breathes when idle,
+  ripples with your voice, swirls while it works and pulses as it speaks.
+* **Left:** the conversation, as telemetry. **Right:** every action JARVIS takes (shell commands,
+  file reads, web searches, phone actions) as it happens, with a line from the sphere to the one running now.
+* **Corners:** only real state, such as the clock, the link to your Mac with latency, the wake word and your mic level.
+* **Talk:** say "Hey Jarvis" (the same wake-word model as the Mac app, running in the browser), or
+  press Space or click the sphere. Speak while it's talking to interrupt, and Esc stops it. It keeps listening
+  for a few seconds after each answer, and you can always type.
+* **Voice:** the same British Kokoro voice as the Mac app; Russian answers use the browser's voice.
+
+Developing the HUD: run `npm run dev` in `web/` (with the server running) for hot reload on :5173.
+On a phone browser the microphone needs HTTPS, for example `tailscale serve` in front of port 8765.
+
 ## Phones (iOS and Android)
 
 Jarvis also runs on your phones as a Google-Assistant-style app. Claude Code on your Mac stays the

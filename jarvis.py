@@ -152,6 +152,7 @@ class Claude:
 
     def __init__(self, model, cwd, on_text, on_done, system=SYSTEM, extra=()):
         self.on_text, self.on_done, self.pending = on_text, on_done, 0
+        self.on_tool = self.on_tool_end = None  # optional (id, name, detail) / (id, is_error) hooks, used by the HUD
         cmd = ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json",
                "--verbose", "--include-partial-messages", "--permission-mode", "bypassPermissions",
                "--append-system-prompt", system, *extra]
@@ -200,8 +201,16 @@ class Claude:
             elif t == "assistant":
                 for b in e["message"].get("content", []):
                     if b.get("type") == "tool_use":
-                        arg = b["input"].get("command") or b["input"].get("description") or ""
+                        i = b["input"]
+                        arg = next((i[k] for k in ("command", "description", "action", "query", "url", "file_path", "pattern",
+                                                   "prompt") if i.get(k)), "")
                         print(f"\033[2m  ⚙ {b['name']}: {str(arg)[:100]}\033[0m", flush=True)
+                        if self.on_tool:
+                            self.on_tool(b["id"], b["name"], str(arg)[:300])
+            elif t == "user" and self.on_tool_end:
+                for b in e.get("message", {}).get("content", []):
+                    if isinstance(b, dict) and b.get("type") == "tool_result":
+                        self.on_tool_end(b.get("tool_use_id"), bool(b.get("is_error")))
             elif t == "system" and e.get("subtype") == "init" and not getattr(self, "sid", None):
                 self.sid = e["session_id"]
                 print(f"\033[2m(claude session {self.sid}; inspect with `claude --resume {self.sid}`)\033[0m")

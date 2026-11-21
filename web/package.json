@@ -1,0 +1,22 @@
+{
+  "name": "jarvis-hud",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "ort": "mkdir -p public/ort && cp node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs public/ort/",
+    "dev": "npm run ort && vite",
+    "build": "npm run ort && vite build"
+  },
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/michroma": "^5.3.0",
+    "@fontsource/saira": "^5.3.0",
+    "onnxruntime-web": "^1.31.1",
+    "svelte": "^5.59.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "vite": "^8.3.8"
+  }
+}

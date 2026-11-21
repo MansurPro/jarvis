@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T19:18:41.092568+00:00",
+  "title": "Design System: J.A.R.V.I.S.",
+  "extensions": {
+    "colorMeta": {
+      "void": {
+        "role": "neutral",
+        "displayName": "Lab Void",
+        "canonical": "oklch(13% 0.02 240)",
+        "tonalRamp": [
+          "oklch(15% 0.02 240)",
+          "oklch(26% 0.02 240)",
+          "oklch(38% 0.02 240)",
+          "oklch(50% 0.02 240)",
+          "oklch(62% 0.02 240)",
+          "oklch(74% 0.02 240)",
+          "oklch(85% 0.02 240)",
+          "oklch(95% 0.02 240)"
+        ]
+      },
+      "arc": {
+        "role": "primary",
+        "displayName": "Arc Cyan",
+        "canonical": "oklch(85% 0.13 210)",
+        "tonalRamp": [
+          "oklch(15% 0.13 210)",
+          "oklch(26% 0.13 210)",
+          "oklch(38% 0.13 210)",
+          "oklch(50% 0.13 210)",
+          "oklch(62% 0.13 210)",
+          "oklch(74% 0.13 210)",
+          "oklch(85% 0.13 210)",
+          "oklch(95% 0.13 210)"
+        ]
+      },
+      "arc-hot": {
+        "role": "primary",
+        "displayName": "White-Hot Arc",
+        "canonical": "oklch(98% 0.02 210)",
+        "tonalRamp": [
+          "oklch(15% 0.02 210)",
+          "oklch(26% 0.02 210)",
+          "oklch(38% 0.02 210)",
+          "oklch(50% 0.02 210)",
+          "oklch(62% 0.02 210)",
+          "oklch(74% 0.02 210)",
+          "oklch(85% 0.02 210)",
+          "oklch(95% 0.02 210)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(99, 227, 255, 0.16)"
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Bracket Line",
+        "canonical": "rgba(99, 227, 255, 0.38)"
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Hologram Text",
+        "canonical": "oklch(95% 0.04 210)",
+        "tonalRamp": [
+          "oklch(15% 0.04 210)",
+          "oklch(26% 0.04 210)",
+          "oklch(38% 0.04 210)",
+          "oklch(50% 0.04 210)",
+          "oklch(62% 0.04 210)",
+          "oklch(74% 0.04 210)",
+          "oklch(85% 0.04 210)",
+          "oklch(95% 0.04 210)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Instrument Slate",
+        "canonical": "oklch(75% 0.05 220)",
+        "tonalRamp": [
+          "oklch(15% 0.05 220)",
+          "oklch(26% 0.05 220)",
+          "oklch(38% 0.05 220)",
+          "oklch(50% 0.05 220)",
+          "oklch(62% 0.05 220)",
+          "oklch(74% 0.05 220)",
+          "oklch(85% 0.05 220)",
+          "oklch(95% 0.05 220)"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Attention Amber",
+        "canonical": "oklch(83% 0.15 70)",
+        "tonalRamp": [
+          "oklch(15% 0.15 70)",
+          "oklch(26% 0.15 70)",
+          "oklch(38% 0.15 70)",
+          "oklch(50% 0.15 70)",
+          "oklch(62% 0.15 70)",
+          "oklch(74% 0.15 70)",
+          "oklch(85% 0.15 70)",
+          "oklch(95% 0.15 70)"
+        ]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Done Mint",
+        "canonical": "oklch(88% 0.13 170)",
+        "tonalRamp": [
+          "oklch(15% 0.13 170)",
+          "oklch(26% 0.13 170)",
+          "oklch(38% 0.13 170)",
+          "oklch(50% 0.13 170)",
+          "oklch(62% 0.13 170)",
+          "oklch(74% 0.13 170)",
+          "oklch(85% 0.13 170)",
+          "oklch(95% 0.13 170)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The clock."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The J.A.R.V.I.S. wordmark."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "JARVIS's replies in the telemetry column."
+      },
+      "body-sm": {
+        "displayName": "Body Sm",
+        "purpose": "Your lines, help and empty-state text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Corner readouts, action names, text buttons; uppercase."
+      },
+      "status": {
+        "displayName": "Status",
+        "purpose": "The status line under the sphere; uppercase."
+      },
+      "timestamp": {
+        "displayName": "Timestamp",
+        "purpose": "Time column of conversation and action rows."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Real commands only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "live-glow",
+        "value": "0 0 8px var(--arc)",
+        "purpose": "Live status dot only; glow is for light sources."
+      },
+      {
+        "name": "fallback-sphere-glow",
+        "value": "inset 0 0 60px var(--arc-soft), 0 0 80px var(--arc-soft)",
+        "purpose": "CSS ring that stands in for the WebGL sphere without WebGL2."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All entrances: line wipe, action arrival, leader draw."
+      },
+      {
+        "name": "line-wipe",
+        "value": "0.7s clip-path inset 100% -> 0",
+        "purpose": "New telemetry line."
+      },
+      {
+        "name": "action-arrive",
+        "value": "0.6s translateX(-18px), blur(4px), opacity 0 -> rest",
+        "purpose": "New action row."
+      },
+      {
+        "name": "leader-draw",
+        "value": "0.8s stroke-dashoffset 900 -> 0",
+        "purpose": "Leader line from sphere to running action."
+      },
+      {
+        "name": "spinner",
+        "value": "0.9s linear infinite rotate",
+        "purpose": "Running action icon."
+      },
+      {
+        "name": "sphere-state-ease",
+        "value": "1 - exp(-dt * 3.5)",
+        "purpose": "Sphere eases toward each state's look; voice level attacks at 30/s, releases at 6/s."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "durations 0.01ms; sphere time x0.25, no swirl, no assembly",
+        "purpose": "prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "900px"
+      }
+    ],
+    "atmosphere": {
+      "grid": "1px lines at rgba(99,227,255,0.035), 48px cells, radial mask from 50% 46% to transparent at 75%",
+      "bloom": "radial-gradient(60vmin at 50% 46%, rgba(99,227,255,0.10), transparent 70%)"
+    }
+  },
+  "components": [
+    {
+      "name": "Text Button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Borderless cyan label button; the HUD's only button style besides the sphere.",
+      "html": "<button class=\"ds-btn-text\">Pair</button>",
+      "css": ".ds-btn-text{background:transparent;border:0;padding:8px;cursor:pointer;color:var(--arc,#63e3ff);font-family:Michroma,Eurostile,Saira,sans-serif;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase}.ds-btn-text:hover{color:var(--arc-hot,#e8fbff)}.ds-btn-text:focus-visible{outline:1px solid var(--arc,#63e3ff);outline-offset:3px}.ds-btn-text:disabled{color:rgba(134,185,201,.35);cursor:default}"
+    },
+    {
+      "name": "Ask Field",
+      "kind": "input",
+      "refersTo": "ask-field",
+      "description": "Type-to-JARVIS: underline-only input with an icon send button.",
+      "html": "<form class=\"ds-ask\"><input placeholder=\"Type to JARVIS\" aria-label=\"Type a request\"><button type=\"submit\" aria-label=\"Send\"><svg viewBox=\"0 0 20 20\"><path d=\"M3 10 H16 M11 5 L16 10 L11 15\"/></svg></button></form>",
+      "css": ".ds-ask{display:flex;align-items:center;border-bottom:1px solid rgba(99,227,255,.38);background:#02070c;width:320px}.ds-ask:focus-within{border-bottom-color:#63e3ff}.ds-ask input{flex:1;background:transparent;border:0;padding:10px 2px;font:15px Saira,system-ui,sans-serif;color:#d6f4fc;min-width:0}.ds-ask input:focus{outline:none}.ds-ask input::placeholder{color:#86b9c9}.ds-ask button{background:transparent;border:0;padding:8px;color:#63e3ff;cursor:pointer}.ds-ask button:hover{color:#e8fbff}.ds-ask svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;display:block}"
+    },
+    {
+      "name": "Bracket Frame",
+      "kind": "card",
+      "refersTo": "frame",
+      "description": "Container implied by two open corner brackets; no fill, no box.",
+      "html": "<section class=\"ds-frame\">Every action JARVIS takes on your Mac shows up here.</section>",
+      "css": ".ds-frame{position:relative;padding:18px 20px;background:#02070c;color:#86b9c9;font:14px Saira,system-ui,sans-serif}.ds-frame::before,.ds-frame::after{content:'';position:absolute;width:14px;height:14px;border:1px solid rgba(99,227,255,.38)}.ds-frame::before{top:0;left:0;border-right:0;border-bottom:0}.ds-frame::after{bottom:0;right:0;border-left:0;border-top:0}"
+    },
+    {
+      "name": "Corner Readout",
+      "kind": "custom",
+      "refersTo": "readout",
+      "description": "Label over a true-state value, as in the HUD corners.",
+      "html": "<div class=\"ds-corner\"><span class=\"ds-label\">Mac link</span><span class=\"ds-readout\"><i class=\"ds-dot\"></i>Online · 12 ms</span></div>",
+      "css": ".ds-corner{display:flex;flex-direction:column;gap:6px;font-family:Michroma,Eurostile,Saira,sans-serif;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;background:#02070c;padding:12px}.ds-label{color:#86b9c9}.ds-readout{color:#86b9c9;display:inline-flex;align-items:center;gap:8px}.ds-dot{width:6px;height:6px;border-radius:50%;background:#63e3ff;box-shadow:0 0 8px #63e3ff}"
+    },
+    {
+      "name": "Action Callout",
+      "kind": "custom",
+      "refersTo": "action-row",
+      "description": "One row per tool call: state icon, name, time, detail.",
+      "html": "<div class=\"ds-act ds-run\"><svg viewBox=\"0 0 16 16\"><circle cx=\"8\" cy=\"8\" r=\"6\"/><path d=\"M8 2 A6 6 0 0 1 14 8\"/></svg><span class=\"ds-name\">Shell</span><span class=\"ds-at\">14:02:11</span><span class=\"ds-detail\">git status --short</span></div><div class=\"ds-act ds-ok\"><svg viewBox=\"0 0 16 16\"><path d=\"M3.5 8.5 L6.5 11.5 L12.5 4.5\"/></svg><span class=\"ds-name\">Read</span><span class=\"ds-at\">14:02:09</span><span class=\"ds-detail ds-prose\">PRODUCT.md</span></div>",
+      "css": ".ds-act{display:grid;grid-template-columns:16px 1fr auto;column-gap:10px;row-gap:3px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(99,227,255,.16);background:#02070c;width:300px}.ds-act svg{width:16px;height:16px;fill:none;stroke-width:1.6}.ds-name{font-family:Michroma,Eurostile,Saira,sans-serif;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#d6f4fc}.ds-at{font:11px Saira,sans-serif;color:#86b9c9;font-variant-numeric:tabular-nums}.ds-detail{grid-column:2/4;font:12.5px 'JetBrains Mono',ui-monospace,monospace;color:#e8fbff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-detail.ds-prose{font:13px Saira,sans-serif;color:#86b9c9}.ds-run .ds-name{color:#63e3ff}.ds-run svg{stroke:#63e3ff;animation:ds-spin .9s linear infinite}.ds-run svg circle{stroke:rgba(99,227,255,.38)}.ds-ok svg{stroke:#7df2c6}@keyframes ds-spin{to{transform:rotate(360deg)}}"
+    },
+    {
+      "name": "Telemetry Line",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Conversation as a log: your line with a chevron, JARVIS's reply at body size.",
+      "html": "<div class=\"ds-tele\"><p class=\"ds-line\"><span class=\"ds-t\">14:02:04</span><svg viewBox=\"0 0 10 10\"><path d=\"M2 1 L7 5 L2 9\"/></svg><span class=\"ds-you\">What's on my calendar?</span></p><p class=\"ds-line\"><span class=\"ds-t\">14:02:07</span><span class=\"ds-jarvis\">Two meetings this afternoon, sir.</span></p></div>",
+      "css": ".ds-tele{background:#02070c;padding:12px;width:420px}.ds-line{margin:0 0 14px;display:grid;grid-template-columns:62px auto 1fr;column-gap:8px;align-items:baseline}.ds-t{font:11px Saira,sans-serif;letter-spacing:.04em;color:#86b9c9;font-variant-numeric:tabular-nums}.ds-line svg{width:9px;height:9px;fill:none;stroke:#63e3ff;stroke-width:1.6}.ds-you{color:#86b9c9;font:14px Saira,sans-serif}.ds-jarvis{grid-column:2/4;color:#d6f4fc;font:17px/1.5 Saira,sans-serif;max-width:46ch}"
+    },
+    {
+      "name": "Status Line",
+      "kind": "custom",
+      "refersTo": "status-line",
+      "description": "The single state sentence under the sphere; amber when attention is needed.",
+      "html": "<p class=\"ds-status\">Say “Hey Jarvis”, or press Space</p><p class=\"ds-status ds-warn\">Your Mac is not answering</p>",
+      "css": ".ds-status{margin:4px 0;text-align:center;font-family:Michroma,Eurostile,Saira,sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#63e3ff;background:#02070c;padding:6px}.ds-warn{color:#ffb648}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Stark-Lab Hologram",
+    "overview": "The HUD is a projection in a dark room. There is one light source, a cyan point-cloud sphere at the centre, and everything else is the faint instrumentation around it: the conversation reads as telemetry down the left, every action Claude takes lands as a callout on the right, and the four corners carry readouts. Nothing sits on a surface; text and hairlines float on the void the way light floats in air. Depth comes from additive light and from masks that fade content into the dark, never from cards or shadows.\n\nThe system is dense but quiet. Labels are tiny, widely tracked, uppercase Michroma; speech is Saira at reading size; real commands are the only mono text. Colour is a single cyan that runs white-hot when the assistant is active, with amber reserved for attention. Motion comes from state: one boot moment where scattered light assembles into the sphere and the rings draw in, then the sphere breathes, ripples with your voice, swirls while working, and pulses with JARVIS's own voice.\n\nEvery readout is true. The world's look borrows from film HUDs, but its telemetry never decorates: a corner shows the clock, the Mac link and its latency, the wake-word state and the live mic level, and nothing invented.",
+    "keyCharacteristics": [
+      "Near-black void with a faint 48px holographic grid, masked to a radial bloom behind the sphere.",
+      "One cyan light; white-hot means active; amber means attention; mint means done.",
+      "Open corner brackets instead of boxes.",
+      "Michroma labels, Saira speech, JetBrains Mono only for real commands.",
+      "Motion is driven by state, never by decoration."
+    ],
+    "rules": [
+      {
+        "name": "The One Light Rule",
+        "body": "Cyan is the only light. A second hue appears only as a state (amber for attention, mint for done), never as decoration or branding.",
+        "section": "colors"
+      },
+      {
+        "name": "The Heat Means Activity Rule",
+        "body": "Brightness tracks activity: the sphere runs from cyan toward white-hot as it listens or speaks, and desaturates to slate when the Mac is offline. Don't brighten anything that isn't doing something.",
+        "section": "colors"
+      },
+      {
+        "name": "The Real Command Rule",
+        "body": "Monospace is reserved for text that is literally a command or code. Never use it to make something look technical.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Clock Rule",
+        "body": "Every time value uses tabular figures so readouts don't jitter as they tick.",
+        "section": "typography"
+      },
+      {
+        "name": "The Light Is the Only Elevation Rule",
+        "body": "Glow belongs only to things that emit light (the sphere, live indicators). Text, rows and fields never lift off the void.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the sphere the largest and brightest thing on screen; everything else is instrumentation around it.",
+      "Do show only true state in readouts: real time, real latency, real mic level, real wake-word state.",
+      "Do mark containers with open 14px corner brackets and separate rows with a single hairline.",
+      "Do keep the 48px holographic grid faint (3.5% cyan) and masked to the centre; it is the lab floor of this world.",
+      "Do drive motion from state changes; the one ambient motion is the sphere's breathing.",
+      "Do use amber only for things that need the user's attention, and say what to do in plain words.",
+      "Do keep readable text at Instrument Slate (#86b9c9) or brighter."
+    ],
+    "donts": [
+      "Don't invent telemetry: no fake coordinates, percentages, hex dumps or scrolling numbers.",
+      "Don't close frames into boxes or fill panels with a background; the void stays visible.",
+      "Don't put glow on text, rows or fields; glow is for light sources.",
+      "Don't introduce a second accent hue, or use amber or mint as decoration.",
+      "Don't use monospace for anything that isn't a real command.",
+      "Don't reproduce film imagery, logos or Marvel assets."
+    ]
+  }
+}
