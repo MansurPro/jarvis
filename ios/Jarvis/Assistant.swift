@@ -8,12 +8,15 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static let shared = Assistant()
 
     enum State { case idle, listening, thinking, speaking }
-    struct Line: Identifiable { let id = UUID(); let who: String; let text: String }
+    struct Line: Identifiable { let id = UUID(); let who: String; var text: String }
 
     @Published var state = State.idle
     @Published var lines: [Line] = []
     @Published var heard = ""
-    @Published var status = "Tap the mic, or say “Hey Siri, ask Jarvis”"
+    @Published var status = "Tap the sphere, or say “Hey Siri, ask Jarvis”"
+    @Published var offline = false
+    /// 0..1 loudness of your voice while listening; read by the sphere every frame (not @Published on purpose).
+    var micLevel = 0.0
 
     private let synth = AVSpeechSynthesizer()
     private let engine = AVAudioEngine()
@@ -117,7 +120,14 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
                 req.shouldReportPartialResults = true
                 if recognizer?.supportsOnDeviceRecognition == true { req.requiresOnDeviceRecognition = true }
                 request = req
-                input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in req.append(buf) }
+                input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buf, _ in
+                    req.append(buf)
+                    guard let ch = buf.floatChannelData?[0], buf.frameLength > 0 else { return }
+                    var sum: Float = 0
+                    for i in 0..<Int(buf.frameLength) { sum += ch[i] * ch[i] }
+                    let level = min(1, Double((sum / Float(buf.frameLength)).squareRoot()) * 12)
+                    Task { @MainActor in self?.micLevel = level }
+                }
             }
             engine.prepare()
             try engine.start()
@@ -191,6 +201,7 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     /// Same endpointing as Mac voice mode: adaptive noise floor, ignore clicks, stop after a pause.
     private func macHeard(_ data: Data, rms: Double) {
         guard macActive, state == .listening else { return }
+        micLevel = min(1, rms / 2500)
         let now = Date()
         macPCM.append(data)
         if rms > max(200, macFloor * 3, macPeak * 0.15) {
@@ -228,7 +239,21 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         turnDone = true
     }
 
+    static func label(_ name: String) -> String {
+        ["Bash": "SHELL", "Read": "READ", "Write": "WRITE", "Edit": "EDIT", "WebSearch": "WEB", "WebFetch": "WEB",
+         "Grep": "SEARCH", "Glob": "FIND", "mcp__phone__phone": "PHONE"][name] ?? name.uppercased()
+    }
+
+    static func verb(_ name: String) -> String {
+        ["Bash": "Running a command", "Read": "Reading a file", "WebSearch": "Searching the web",
+         "WebFetch": "Reading a web page", "mcp__phone__phone": "Using your phone"][name] ?? "Working"
+    }
+
+    private var replyOpen = false
+
     func ask(_ text: String) {
+        replyOpen = false
+        offline = false
         cancelTurn()
         turnDone = false
         log("you", text)
@@ -238,16 +263,23 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
             do {
                 try await Backend.ask(text, onText: { [weak self] t in
                     guard let self, !Task.isCancelled else { return }
-                    self.log("jarvis", t)
+                    if self.replyOpen, self.lines.last?.who == "jarvis" { self.lines[self.lines.count - 1].text += " " + t }
+                    else { self.log("jarvis", t); self.replyOpen = true }
                     self.speak(t)
                 }, onTool: { [weak self] action in
-                    self?.status = "Using \(action)…"
+                    self?.status = "Using your phone: \(action)"
+                }, onActivity: { [weak self] name, detail in
+                    guard let self, !Task.isCancelled else { return }
+                    self.log("act", "\(Assistant.label(name))  \(detail.prefix(90))")
+                    self.replyOpen = false
+                    self.status = Assistant.verb(name)
                 })
             } catch is CancellationError {
                 return
             } catch {
                 if Task.isCancelled { return }
                 log("system", error.localizedDescription)
+                offline = !(error is Backend.Failure)
                 conversing = false
                 speak("I can't reach your Mac, sir.")
             }
@@ -290,7 +322,7 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
 
     private func setIdle() {
         state = .idle
-        status = "Tap the mic, or say “Hey Siri, ask Jarvis”"
+        status = "Tap the sphere, or say “Hey Siri, ask Jarvis”"
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }

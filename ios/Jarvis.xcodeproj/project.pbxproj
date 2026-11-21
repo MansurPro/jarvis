@@ -12,11 +12,13 @@
 		5E25349CC3262A18DE554A01 /* JarvisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD65447B9E4C38A85B4132FD /* JarvisApp.swift */; };
 		72FCE5D95F049EC8A64E60EF /* Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AEFC59291C8E9FDFCFC858 /* Actions.swift */; };
 		AAC4A94650264A02F5F5E34F /* Assistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = F393A4D44582041AD0ED3234 /* Assistant.swift */; };
+		BD0386CDFEAB4C3A61CF9183 /* SphereView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A78BE7FC73750CE6AD7FB9 /* SphereView.swift */; };
 		DEBFA12BB1A100389711262E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 61C76376F114B708AF2B9EF1 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		06AEFC59291C8E9FDFCFC858 /* Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Actions.swift; sourceTree = "<group>"; };
+		37A78BE7FC73750CE6AD7FB9 /* SphereView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SphereView.swift; sourceTree = "<group>"; };
 		61C76376F114B708AF2B9EF1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BD65447B9E4C38A85B4132FD /* JarvisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisApp.swift; sourceTree = "<group>"; };
 		C64EDF72B3692F2FBF38D386 /* Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backend.swift; sourceTree = "<group>"; };
@@ -53,6 +55,7 @@
 				D758DDA5F42A49B6CB275DED /* Info.plist */,
 				EBE375C1BB9823F13EFBD8E3 /* Intents.swift */,
 				BD65447B9E4C38A85B4132FD /* JarvisApp.swift */,
+				37A78BE7FC73750CE6AD7FB9 /* SphereView.swift */,
 			);
 			path = Jarvis;
 			sourceTree = "<group>";
@@ -133,6 +136,7 @@
 				1870F13F6D4085D62716F691 /* Backend.swift in Sources */,
 				09CF0FDC997197D3D3A29295 /* Intents.swift in Sources */,
 				5E25349CC3262A18DE554A01 /* JarvisApp.swift in Sources */,
+				BD0386CDFEAB4C3A61CF9183 /* SphereView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

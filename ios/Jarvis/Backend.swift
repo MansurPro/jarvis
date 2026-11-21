@@ -64,7 +64,8 @@ struct Backend {
 
     /// Sends one request. `onText` gets each sentence as it streams in; tool calls are executed here.
     static func ask(_ text: String, onText: @escaping @MainActor (String) -> Void,
-                    onTool: @escaping @MainActor (String) -> Void = { _ in }) async throws {
+                    onTool: @escaping @MainActor (String) -> Void = { _ in },
+                    onActivity: @escaping @MainActor (String, String) -> Void = { _, _ in }) async throws {
         let device = await device()
         let (bytes, resp) = try await URLSession.shared.bytes(for: request("/ask", body: ["text": text, "device": device]))
         switch (resp as? HTTPURLResponse)?.statusCode ?? 0 {
@@ -84,6 +85,8 @@ struct Backend {
                 let (result, isError) = await Actions.run(action, ev["args"] as? [String: Any] ?? [:])
                 _ = try? await URLSession.shared.data(for: request("/tool_result", body: [
                     "id": ev["id"] as? String ?? "", "result": result, "error": isError]))
+            case "activity": // every action Claude takes on the Mac, for the feed
+                await onActivity(ev["name"] as? String ?? "", ev["detail"] as? String ?? "")
             case "done":
                 return
             default:

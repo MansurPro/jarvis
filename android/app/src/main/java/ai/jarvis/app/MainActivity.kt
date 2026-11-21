@@ -132,67 +132,152 @@ class MainActivity : Activity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
+    private lateinit var sphere: SphereView
+    private lateinit var stateWord: TextView
+    private lateinit var clock: TextView
+    @Volatile private var micLevel = 0f
+    private var offline = false
+    private val log = android.text.SpannableStringBuilder()
+
+    /** Same world as the web HUD (DESIGN.md): one cyan light on a near-black void, the sphere at the centre. */
     private fun buildUi() {
         window.statusBarColor = BG
         window.navigationBarColor = BG
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(BG)
-            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setPadding(dp(18), dp(14), dp(18), dp(14))
         }
-        val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(TextView(this).apply {
-            text = "JARVIS"; setTextColor(ACCENT); textSize = 22f; typeface = Typeface.create("sans-serif-light", Typeface.BOLD)
-            letterSpacing = 0.3f
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-        header.addView(Button(this).apply {
-            text = "⚙"; textSize = 20f; setTextColor(MUTED); background = null
-            contentDescription = "Settings"
+        fun label(size: Float, color: Int, spacing: Float = 0.16f) = TextView(this).apply {
+            textSize = size; setTextColor(color); letterSpacing = spacing; isAllCaps = true
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+        val header = LinearLayout(this).apply { gravity = Gravity.TOP }
+        val left = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        left.addView(TextView(this).apply {
+            text = "J.A.R.V.I.S."; textSize = 16f; setTextColor(ACCENT); letterSpacing = 0.34f
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        })
+        stateWord = label(10f, MUTED).also { left.addView(it) }
+        header.addView(left, LinearLayout.LayoutParams(0, -2, 1f))
+        val right = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
+        clock = TextView(this).apply {
+            textSize = 20f; setTextColor(TEXT); typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            fontFeatureSettings = "tnum"
+        }
+        right.addView(clock)
+        right.addView(label(10f, ACCENT).apply {
+            text = "Settings"; setPadding(0, dp(6), 0, dp(6))
             setOnClickListener { showSettings() }
         })
+        header.addView(right)
         root.addView(header)
 
-        status = TextView(this).apply { setTextColor(MUTED); textSize = 14f; text = "Tap the mic or use the assist gesture" }
-        root.addView(status)
+        val m = resources.displayMetrics
+        val size = minOf((m.widthPixels * 0.82f).toInt(), (m.heightPixels * 0.40f).toInt())
+        sphere = SphereView(this).apply {
+            contentDescription = "Talk to Jarvis"
+            isClickable = true
+            setOnClickListener { onMic() }
+            level = {
+                when (state) {
+                    State.LISTENING -> micLevel
+                    State.SPEAKING -> 0.3f + 0.18f * kotlin.math.sin(System.nanoTime() / 9e7).toFloat() // TTS gives no samples
+                    else -> 0f
+                }
+            }
+        }
+        root.addView(sphere, LinearLayout.LayoutParams(size, size).apply { gravity = Gravity.CENTER_HORIZONTAL })
 
-        logView = TextView(this).apply { setTextColor(TEXT); textSize = 16f; setLineSpacing(0f, 1.2f); setTextIsSelectable(true) }
-        scroll = ScrollView(this).apply { addView(logView); setPadding(0, dp(12), 0, dp(12)) }
+        status = label(11f, ACCENT, 0.2f).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(10)) }
+        root.addView(status, LinearLayout.LayoutParams(-1, -2))
+
+        logView = TextView(this).apply { setTextColor(TEXT); textSize = 16f; setLineSpacing(0f, 1.25f); setTextIsSelectable(true) }
+        scroll = ScrollView(this).apply { addView(logView); isVerticalScrollBarEnabled = false }
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val row = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { setColor(BG) }
+        }
         input = EditText(this).apply {
-            hint = "Type to Jarvis…"; setHintTextColor(MUTED); setTextColor(TEXT); textSize = 16f
+            hint = "Type to JARVIS"; setHintTextColor(MUTED); setTextColor(TEXT); textSize = 16f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             imeOptions = EditorInfo.IME_ACTION_SEND
+            backgroundTintList = android.content.res.ColorStateList.valueOf(LINE)
             setOnEditorActionListener { _, _, _ -> sendTyped(); true }
         }
         row.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
-        mic = Button(this).apply {
-            text = "●"; textSize = 26f; setTextColor(Color.WHITE)
-            contentDescription = "Talk to Jarvis"
-            setOnClickListener { onMic() }
-        }
-        row.addView(mic, LinearLayout.LayoutParams(dp(72), dp(72)).apply { leftMargin = dp(12) })
+        row.addView(label(11f, ACCENT).apply {
+            text = "Send"; setPadding(dp(14), dp(12), dp(4), dp(12))
+            setOnClickListener { sendTyped() }
+        })
         root.addView(row)
+        // Android 15 draws edge to edge: keep clear of the status bar, navigation bar and keyboard
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            val (top, bottom) = if (Build.VERSION.SDK_INT >= 30) {
+                val i = insets.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.ime())
+                i.top to i.bottom
+            } else @Suppress("DEPRECATION") (insets.systemWindowInsetTop to insets.systemWindowInsetBottom)
+            v.setPadding(dp(18), top + dp(10), dp(18), bottom + dp(10))
+            insets
+        }
         setContentView(root)
         setState(State.IDLE)
+        val ticker = object : Runnable {
+            override fun run() {
+                clock.text = java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+                handler.postDelayed(this, 1000)
+            }
+        }
+        ticker.run()
     }
 
     private fun setState(s: State) {
         state = s
-        val (color, label) = when (s) {
-            State.IDLE -> ACCENT to "Tap the mic or use the assist gesture"
-            State.LISTENING -> RED to "Listening…"
-            State.THINKING -> AMBER to "Thinking…"
-            State.SPEAKING -> ACCENT to "Speaking — tap to interrupt"
+        sphere.mode = when {
+            offline -> SphereView.Mode.OFFLINE
+            s == State.LISTENING -> SphereView.Mode.LISTENING
+            s == State.THINKING -> SphereView.Mode.THINKING
+            s == State.SPEAKING -> SphereView.Mode.SPEAKING
+            else -> SphereView.Mode.IDLE
         }
-        mic.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
-        status.text = label
+        stateWord.text = if (offline) "Offline" else when (s) {
+            State.IDLE -> "Online"; State.LISTENING -> "Listening"; State.THINKING -> "Working"; State.SPEAKING -> "Speaking"
+        }
+        status.setTextColor(if (offline) AMBER else ACCENT)
+        status.text = if (offline) "Your Mac is not answering" else when (s) {
+            State.IDLE -> "Tap the sphere or use the assist gesture"
+            State.LISTENING -> "Listening"
+            State.THINKING -> "Working"
+            State.SPEAKING -> "Speaking · tap to interrupt"
+        }
     }
 
+    /** The conversation as telemetry: your words dim, JARVIS's bright, actions in mono, problems in amber. */
     private fun log(who: String, text: String) {
-        val prefix = when (who) { "you" -> "› "; "jarvis" -> ""; else -> "· " }
-        logView.append((if (logView.text.isEmpty()) "" else "\n") + prefix + text + if (who == "you") "\n" else "")
+        if (log.isNotEmpty()) log.append(if (who == "act") "\n" else "\n\n")
+        val start = log.length
+        log.append(if (who == "you") "›  $text" else text)
+        val span = { o: Any -> log.setSpan(o, start, log.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) }
+        when (who) {
+            "you" -> { span(android.text.style.ForegroundColorSpan(MUTED)); span(android.text.style.RelativeSizeSpan(0.88f)) }
+            "act" -> { span(android.text.style.ForegroundColorSpan(MUTED)); span(android.text.style.RelativeSizeSpan(0.78f)); span(android.text.style.TypefaceSpan("monospace")) }
+            "jarvis" -> span(android.text.style.ForegroundColorSpan(TEXT))
+            else -> span(android.text.style.ForegroundColorSpan(AMBER))
+        }
+        logView.text = log
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    /** JARVIS sentences of one reply join one paragraph. */
+    private var replyOpen = false
+
+    private fun appendReply(t: String) {
+        val start = log.length
+        log.append(" $t")
+        log.setSpan(android.text.style.ForegroundColorSpan(TEXT), start, log.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        logView.text = log
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -277,6 +362,7 @@ class MainActivity : Activity() {
                     val n = rec.read(f, 0, f.size)
                     if (n <= 0) continue
                     val rms = sqrt((0 until n).sumOf { f[it].toDouble() * f[it] } / n)
+                    micLevel = (rms / 2500).toFloat().coerceAtMost(1f)
                     val now = SystemClock.elapsedRealtime()
                     frames += f.copyOf(n)
                     if (rms > maxOf(200.0, floor * 3, peak * 0.15)) { voiced++; lastVoice = now; peak = max(peak, rms) }
@@ -346,7 +432,7 @@ class MainActivity : Activity() {
                 }
             }
             override fun onBeginningOfSpeech() = handler.removeCallbacks(watchdog)
-            override fun onRmsChanged(rms: Float) {}
+            override fun onRmsChanged(rms: Float) { micLevel = ((rms + 2f) / 12f).coerceIn(0f, 1f) }
             override fun onBufferReceived(b: ByteArray?) {}
             override fun onEndOfSpeech() {}
             override fun onEvent(t: Int, b: Bundle?) {}
@@ -386,6 +472,8 @@ class MainActivity : Activity() {
         cancelTurn()
         val my = turnId
         turnDone = false
+        replyOpen = false
+        offline = false
         log("you", text)
         setState(State.THINKING)
         val device = device()
@@ -403,7 +491,14 @@ class MainActivity : Activity() {
                         if (my != turnId) break
                         val ev = JSONObject(line)
                         when (ev.optString("type")) {
-                            "text" -> ev.getString("text").let { t -> runOnUiThread { if (my == turnId) { log("jarvis", t); speak(t) } } }
+                            "text" -> ev.getString("text").let { t -> runOnUiThread { if (my == turnId) { if (replyOpen) appendReply(t) else { log("jarvis", t); replyOpen = true }; speak(t) } } }
+                            "activity" -> {
+                                val name = ev.optString("name").removePrefix("mcp__phone__")
+                                val label = mapOf("Bash" to "SHELL", "Read" to "READ", "Write" to "WRITE", "Edit" to "EDIT", "WebSearch" to "WEB",
+                                    "WebFetch" to "WEB", "Grep" to "SEARCH", "Glob" to "FIND", "phone" to "PHONE")[name] ?: name.uppercase()
+                                val detail = ev.optString("detail").take(80)
+                                runOnUiThread { if (my == turnId) { log("act", "$label  $detail"); replyOpen = false } }
+                            }
                             "tool" -> {
                                 val action = ev.getString("action")
                                 runOnUiThread { if (my == turnId) status.text = "Using $action…" }
@@ -417,6 +512,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 if (my == turnId) runOnUiThread {
                     val msg = e.message?.takeIf { it.startsWith("The Mac") } ?: "Can't reach your Mac at $serverUrl. Is `jarvis.py --serve` running?"
+                    offline = e.message?.startsWith("The Mac") != true
                     log("system", msg)
                     conversing = false
                     speak("I can't reach your Mac, sir.")
@@ -498,11 +594,12 @@ class MainActivity : Activity() {
         const val MAC_RECORDING = 1
         const val MAC_FINISH = 2
         const val MAC_CANCEL = 3
-        val BG = Color.parseColor("#0B1220")
-        val TEXT = Color.parseColor("#E2E8F0")
-        val MUTED = Color.parseColor("#94A3B8")
-        val ACCENT = Color.parseColor("#0EA5E9")
-        val AMBER = Color.parseColor("#F59E0B")
+        val BG = Color.parseColor("#02070C")
+        val TEXT = Color.parseColor("#D6F4FC")
+        val MUTED = Color.parseColor("#86B9C9")
+        val ACCENT = Color.parseColor("#63E3FF")
+        val LINE = Color.parseColor("#4063E3FF")
+        val AMBER = Color.parseColor("#FFB648")
         val RED = Color.parseColor("#EF4444")
     }
 }
