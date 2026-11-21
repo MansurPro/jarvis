@@ -309,6 +309,9 @@ def voice_loop(args, agent, tts):
     stream.start()
     print(f"Mic: {sd.query_devices(stream.device)['name']}. Say “hey Jarvis”. Ctrl+C to quit.", flush=True)
     tts.say("Online and at your service, sir.")
+    if not any(np.abs(frames.get()).max() for _ in range(25)):  # 2 s of exact zeros = macOS blocked the mic
+        print("\033[31mMic is sending pure silence: allow your terminal in System Settings → Privacy & Security"
+              " → Microphone, then restart it.\033[0m", flush=True)
 
     # ponytail: energy-based endpointing with an adaptive noise floor; swap in Silero VAD if noisy rooms misfire.
     floor, listening, buf, started, last_voice, voiced, timeout = 200.0, False, [], 0.0, 0.0, 0, 0.0

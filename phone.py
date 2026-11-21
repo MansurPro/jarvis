@@ -152,6 +152,25 @@ class Brain:
             entry[0].set()
 
 
+WHISPER = "mlx-community/whisper-large-v3-turbo"
+_whisper_lock = threading.Lock()
+
+
+def transcribe(pcm):
+    """Speech-to-text for phones whose own recognizer is missing (emulators, de-Googled Android):
+    raw 16 kHz mono 16-bit PCM in, text out, using the same Whisper model as Mac voice mode."""
+    import numpy as np
+    import mlx_whisper
+    audio = np.frombuffer(pcm[: len(pcm) // 2 * 2], np.int16).astype(np.float32) / 32768
+    if len(audio) < 16000 * 0.3:
+        return ""
+    with _whisper_lock:  # one transcription at a time on the GPU
+        text = mlx_whisper.transcribe(audio, path_or_hf_repo=WHISPER, condition_on_previous_text=False,
+                                      initial_prompt="Jarvis, Claude Code, Codex.")["text"].strip()
+    print(f"\033[2m  🎙  {text}\033[0m", flush=True)
+    return text
+
+
 def handler(brain, tok):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -182,6 +201,8 @@ def handler(brain, tok):
         def do_POST(self):
             if not self._authed():
                 return
+            if self.path == "/transcribe":
+                return self._json(200, {"text": transcribe(self.rfile.read(int(self.headers.get("Content-Length") or 0)))})
             body = self._body()
             if self.path == "/ask":
                 return self._ask(body)
@@ -250,6 +271,7 @@ def serve(port, model, cwd, public_url=None):
     tok = token()
     url = public_url or f"http://{lan_ip()}:{port}"
     brain = Brain(port, tok, model, cwd)
+    threading.Thread(target=transcribe, args=(bytes(32000),), daemon=True).start()  # load Whisper before a phone needs it
     server = ThreadingHTTPServer(("0.0.0.0", port), handler(brain, tok))
     pair = "jarvis://pair?" + urlencode({"url": url, "token": tok})
     print(f"Jarvis phone server on {url}\nScan with your phone's camera to pair (or enter the URL and token in the app):\n")

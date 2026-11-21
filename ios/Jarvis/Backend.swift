@@ -43,6 +43,18 @@ struct Backend {
         }
     }
 
+    /// Whisper on the Mac, for when the iPhone's own recognizer is missing or broken (e.g. the simulator).
+    /// Takes raw 16 kHz mono 16-bit PCM.
+    static func transcribe(_ pcm: Data) async throws -> String {
+        var r = try request("/transcribe")
+        r.httpMethod = "POST"
+        r.httpBody = pcm
+        r.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        let (data, _) = try await URLSession.shared.data(for: r)
+        let text = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["text"] as? String
+        return (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     @MainActor static func device() -> [String: Any] {
         let f = DateFormatter()
         f.dateFormat = "EEE yyyy-MM-dd HH:mm xxx"

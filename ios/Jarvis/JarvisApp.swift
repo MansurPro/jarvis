@@ -90,6 +90,7 @@ struct ContentView: View {
         .task {
             // ponytail: `-ask "…"` launch argument sends a request on start (used to test from the command line)
             if let q = UserDefaults.standard.string(forKey: "ask") { assistant.send(typed: q) }
+            if UserDefaults.standard.bool(forKey: "listen") { assistant.startConversation() } // `-listen YES`
         }
     }
 }

@@ -57,7 +57,7 @@
 	<key>NSRemindersUsageDescription</key>
 	<string>So Jarvis can add reminders.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Jarvis turns your speech into text on the device.</string>
+	<string>Jarvis turns what you say into text so Claude can act on it.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

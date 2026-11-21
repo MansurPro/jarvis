@@ -36,7 +36,7 @@ targets:
           NSAllowsArbitraryLoads: true   # the Mac is reached over plain http on your LAN / Tailscale
         NSLocalNetworkUsageDescription: Jarvis talks to the Jarvis server on your Mac.
         NSMicrophoneUsageDescription: Jarvis listens when you talk to it.
-        NSSpeechRecognitionUsageDescription: Jarvis turns your speech into text on the device.
+        NSSpeechRecognitionUsageDescription: Jarvis turns what you say into text so Claude can act on it.
         NSContactsUsageDescription: So Jarvis can find people's numbers when you ask.
         NSCalendarsFullAccessUsageDescription: So Jarvis can read and add calendar events.
         NSCalendarsUsageDescription: So Jarvis can read and add calendar events.

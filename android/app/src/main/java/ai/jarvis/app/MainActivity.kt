@@ -7,11 +7,15 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognitionService
@@ -30,12 +34,16 @@ import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.concurrent.thread
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 class MainActivity : Activity() {
     private enum class State { IDLE, LISTENING, THINKING, SPEAKING }
@@ -65,8 +73,7 @@ class MainActivity : Activity() {
     private val watchdog = Runnable {
         if (state == State.LISTENING) {
             recognizer?.cancel(); recognizer?.destroy(); recognizer = null
-            recognizerChoice++
-            listen()
+            nextRecognizer()
         }
     }
 
@@ -199,7 +206,7 @@ class MainActivity : Activity() {
 
     private fun onMic() {
         when (state) {
-            State.LISTENING -> { conversing = false; recognizer?.stopListening() }
+            State.LISTENING -> { conversing = false; recognizer?.stopListening(); macListen = MAC_FINISH }
             State.THINKING, State.SPEAKING -> { cancelTurn(); tts.stop(); startConversation() }
             State.IDLE -> startConversation()
         }
@@ -213,8 +220,11 @@ class MainActivity : Activity() {
     }
 
     /** Speech recognizers to try, best first. Never our own stub (it becomes the system default once Jarvis is
-     *  the assistant). "activity" = Google's voice-input screen, which works on any phone with the Google app. */
-    private var recognizerChoice = 0
+     *  the assistant). "mac" = record here and transcribe with Whisper on the Mac: always works, even on
+     *  emulators and phones without Google. The choice that works is remembered. */
+    private var recognizerChoice
+        get() = prefs.getInt("recognizer", 0)
+        set(v) = prefs.edit().putInt("recognizer", v).apply()
 
     private fun recognizerOptions(): List<String> {
         val services = packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), 0)
@@ -222,7 +232,18 @@ class MainActivity : Activity() {
             .sortedBy { if (it.packageName == "com.google.android.googlequicksearchbox") 0 else 1 }
             .map { "${it.packageName}/${it.name}" }
         val onDevice = if (Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) listOf("ondevice") else emptyList()
-        return services + onDevice + "activity"
+        return services + onDevice + "mac"
+    }
+
+    /** Has the current recognizer ever produced text? Until it has, any error means "broken here": move on. */
+    private var recognizerProven
+        get() = prefs.getBoolean("recognizer_ok", false)
+        set(v) = prefs.edit().putBoolean("recognizer_ok", v).apply()
+
+    private fun nextRecognizer() {
+        recognizerChoice = (recognizerChoice + 1).coerceAtMost(recognizerOptions().lastIndex)
+        recognizerProven = false
+        listen()
     }
 
     private fun makeRecognizer(option: String): SpeechRecognizer =
@@ -235,12 +256,53 @@ class MainActivity : Activity() {
         putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != VOICE_SCREEN) return
-        val text = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim().orEmpty()
-        if (resultCode == RESULT_OK && text.isNotEmpty()) ask(text) else { conversing = false; setState(State.IDLE) }
+    @Volatile private var macListen = MAC_OFF
+
+    /** Record until a pause, then let Whisper on the Mac transcribe it. Same endpointing as Mac voice mode. */
+    private fun listenWithMac() {
+        setState(State.LISTENING)
+        status.text = "Listening… (Mac speech recognition)"
+        macListen = MAC_RECORDING
+        thread {
+            val rate = 16000
+            val rec = AudioRecord(MediaRecorder.AudioSource.MIC, rate, AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, max(AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), 8192))
+            val frames = ArrayList<ShortArray>()
+            var floor = 300.0; var peak = 0.0; var voiced = 0; var lastVoice = 0L
+            val started = SystemClock.elapsedRealtime()
+            rec.startRecording()
+            try {
+                while (macListen == MAC_RECORDING) {
+                    val f = ShortArray(1280) // 80 ms
+                    val n = rec.read(f, 0, f.size)
+                    if (n <= 0) continue
+                    val rms = sqrt((0 until n).sumOf { f[it].toDouble() * f[it] } / n)
+                    val now = SystemClock.elapsedRealtime()
+                    frames += f.copyOf(n)
+                    if (rms > maxOf(200.0, floor * 3, peak * 0.15)) { voiced++; lastVoice = now; peak = max(peak, rms) }
+                    else if (voiced == 0) { floor = 0.9 * floor + 0.1 * min(rms, floor * 2); while (frames.size > 4) frames.removeAt(0) }
+                    when {
+                        voiced == 0 && now - started > 7000 -> break                        // nothing said
+                        voiced in 1..3 && now - lastVoice > 800 -> { voiced = 0; peak = 0.0 } // a click, not speech
+                        voiced >= 4 && now - lastVoice > 900 -> break                       // pause: done
+                        now - started > 25_000 -> break
+                    }
+                }
+            } finally { rec.stop(); rec.release() }
+            android.util.Log.i("Jarvis", "mic: ${frames.size} frames, voiced=$voiced peak=${peak.toInt()} floor=${floor.toInt()}")
+            if (macListen == MAC_CANCEL) return@thread
+            macListen = MAC_OFF
+            if (voiced < 4) { runOnUiThread { conversing = false; setState(State.IDLE) }; return@thread }
+            runOnUiThread { status.text = "Transcribing…" }
+            val pcm = ByteArrayOutputStream()
+            for (f in frames) for (v in f) { pcm.write(v.toInt() and 0xff); pcm.write(v.toInt() shr 8 and 0xff) }
+            val text = try {
+                val c = open("/transcribe").apply { requestMethod = "POST"; doOutput = true; setRequestProperty("Content-Type", "application/octet-stream") }
+                c.outputStream.use { it.write(pcm.toByteArray()) }
+                JSONObject(c.inputStream.bufferedReader().readText()).optString("text").trim()
+            } catch (e: Exception) { "" }
+            runOnUiThread { if (text.isEmpty()) { conversing = false; setState(State.IDLE) } else ask(text) }
+        }
     }
 
     private fun listen() {
@@ -251,11 +313,7 @@ class MainActivity : Activity() {
         tts.stop()
         val options = recognizerOptions()
         val option = options[recognizerChoice.coerceAtMost(options.lastIndex)]
-        if (option == "activity") {
-            setState(State.LISTENING)
-            @Suppress("DEPRECATION") startActivityForResult(recognizeIntent(), VOICE_SCREEN)
-            return
-        }
+        if (option == "mac") return listenWithMac()
         val r = recognizer ?: makeRecognizer(option).also { recognizer = it }
         r.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(p: Bundle?) {
@@ -269,15 +327,14 @@ class MainActivity : Activity() {
             override fun onResults(p: Bundle?) {
                 handler.removeCallbacks(watchdog)
                 val text = p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim().orEmpty()
-                if (text.isEmpty()) { conversing = false; setState(State.IDLE) } else ask(text)
+                if (text.isEmpty()) { conversing = false; setState(State.IDLE) } else { recognizerProven = true; ask(text) }
             }
             override fun onError(error: Int) {
                 handler.removeCallbacks(watchdog)
                 // 12/13 = language not supported / not downloaded (API 31 constants): move on to the next recognizer
-                if (error in setOf(12, 13, SpeechRecognizer.ERROR_SERVER, SpeechRecognizer.ERROR_SERVER_DISCONNECTED)) {
+                if (error in setOf(12, 13, SpeechRecognizer.ERROR_SERVER, SpeechRecognizer.ERROR_SERVER_DISCONNECTED) || (conversing && !recognizerProven)) {
                     recognizer?.destroy(); recognizer = null
-                    recognizerChoice++
-                    return listen()
+                    return nextRecognizer()
                 }
                 conversing = false
                 setState(State.IDLE)
@@ -318,6 +375,7 @@ class MainActivity : Activity() {
     }
 
     private fun cancelTurn() {
+        if (macListen == MAC_RECORDING) macListen = MAC_CANCEL
         turnId++
         conn?.disconnect()
         conn = null
@@ -436,7 +494,10 @@ class MainActivity : Activity() {
     }
 
     companion object {
-        const val VOICE_SCREEN = 42
+        const val MAC_OFF = 0
+        const val MAC_RECORDING = 1
+        const val MAC_FINISH = 2
+        const val MAC_CANCEL = 3
         val BG = Color.parseColor("#0B1220")
         val TEXT = Color.parseColor("#E2E8F0")
         val MUTED = Color.parseColor("#94A3B8")

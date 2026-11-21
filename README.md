@@ -110,10 +110,98 @@ Its instructions make it ask for a spoken "yes" before deleting, sending, purcha
 shutting down, but speech recognition can mishear. Use headphones (so it doesn't hear itself),
 and don't leave it listening in a room with a TV on.
 
-## Tests
+## Testing locally
+
+Everything below runs on one Mac; no phone or second person needed.
+
+**1. Unit checks** (sentence splitting, markdown cleanup, phone-tool argument parsing):
 
 ```sh
-uv run python test_jarvis.py
+uv run python test_jarvis.py          # prints "voice ok" and "phone ok"
 ```
+
+**2. The brain, without audio.** Type instead of talk; `--mute` prints replies instead of speaking:
+
+```sh
+uv run jarvis.py --text --mute        # try: "what time is it?", "how many files are in Downloads?"
+uv run jarvis.py --text --agent codex # same, with Codex as the brain
+```
+
+**3. Voice on the Mac.** `say` through the speakers is a stand-in for you talking:
+
+```sh
+uv run jarvis.py --mute --followup 0 &
+say -v Samantha "Hey Jarvis."; sleep 0.4; say -v Samantha "What is two plus two?"
+```
+
+If it never reacts, run `uv run python -c "import sounddevice as sd, numpy as np; a=sd.rec(32000,samplerate=16000,channels=1,dtype='int16'); sd.wait(); print(np.abs(a).max())"`.
+`0` means macOS is blocking the microphone: allow your terminal in System Settings → Privacy &
+Security → Microphone and restart the terminal (emulators started from it inherit the same block).
+
+**4. Phone backend, without a phone.** Start the server, then play the phone's side with curl:
+
+```sh
+uv run jarvis.py --serve &
+TOK=$(cat ~/.jarvis/token)
+curl -s -H "Authorization: Bearer $TOK" localhost:8765/health                # {"ok": true}
+curl -sN -H "Authorization: Bearer $TOK" localhost:8765/ask \
+  -d '{"text": "how is my battery?", "device": {"platform": "test", "actions": ["battery"]}}'
+```
+
+The stream stops at a `{"type": "tool", "id": "…", "action": "battery"}` line and waits for the
+"phone" to answer. Reply from a second terminal and the spoken answer streams back:
+
+```sh
+curl -s -H "Authorization: Bearer $TOK" localhost:8765/tool_result -d '{"id": "<id>", "result": "Battery 23%"}'
+```
+
+Speech-to-text for phones: `curl -s -H "Authorization: Bearer $TOK" --data-binary @audio.raw localhost:8765/transcribe`
+with raw 16 kHz mono 16-bit audio (`ffmpeg -i in.wav -ar 16000 -ac 1 -f s16le audio.raw`).
+
+**5. Android emulator.** One-time setup: JDK 17 and the Android SDK
+(`brew install openjdk@17 --cask android-commandlinetools`, then
+`sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "emulator" "system-images;android-35;google_apis_playstore;arm64-v8a"`)
+and an emulator (Android Studio's Device Manager, or `avdmanager create avd -n jarvis -k "system-images;android-35;google_apis_playstore;arm64-v8a"`).
+
+```sh
+export JAVA_HOME=$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home
+emulator -avd jarvis -allow-host-audio &                   # window + the Mac's microphone
+(cd android && ./gradlew assembleDebug) && adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+for p in RECORD_AUDIO READ_CONTACTS CALL_PHONE SEND_SMS READ_SMS READ_CALENDAR WRITE_CALENDAR ACCESS_FINE_LOCATION; do
+  adb shell pm grant ai.jarvis.app android.permission.$p; done
+adb shell cmd role add-role-holder android.app.role.ASSISTANT ai.jarvis.app 0                 # default assistant
+adb shell settings put secure enabled_accessibility_services ai.jarvis.app/ai.jarvis.app.JarvisAccessibility
+adb shell am start -a android.intent.action.VIEW \
+  -d "'jarvis://pair?url=http%3A%2F%2F10.0.2.2%3A8765&token=$(cat ~/.jarvis/token)'"     # 10.0.2.2 = the Mac
+adb emu geo fix 69.2797 41.3111                            # fake GPS position (longitude latitude)
+```
+
+Then type in the app, or send a request from the terminal and watch the server's output:
+
+```sh
+adb shell am start -n ai.jarvis.app/.MainActivity -e ask "'Open Settings and tell me what is in Network and internet'"
+adb shell input keyevent KEYCODE_ASSIST                    # assist gesture: opens Jarvis listening
+```
+
+Emulators have no Google account, so Android's own speech recognizers fail there; Jarvis notices
+and switches to Whisper on the Mac (status line: "Mac speech recognition"). Its log line
+`adb logcat -s Jarvis` shows the microphone level (`peak=0` means the Mac blocked the mic, see 3).
+
+**6. iOS simulator.** Needs Xcode with the Simulator app (Xcode → Open Developer Tool → Simulator).
+
+```sh
+cd ios && xcodebuild -project Jarvis.xcodeproj -scheme Jarvis -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+xcrun simctl boot "iPhone 15 Pro"; open -a Simulator
+xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Jarvis.app
+for s in contacts calendar reminders location microphone; do xcrun simctl privacy booted grant $s ai.jarvis.app; done
+xcrun simctl location booted set 41.3111,69.2797
+xcrun simctl launch booted ai.jarvis.app -url http://127.0.0.1:8765 -token "$(cat ~/.jarvis/token)" \
+  -ask "Find Kate Bell in my contacts"                      # simulator ships sample contacts
+```
+
+`-listen YES` instead of `-ask` starts a voice conversation. Pairing by QR link also works:
+`xcrun simctl openurl booted "jarvis://pair?url=http%3A%2F%2F127.0.0.1%3A8765&token=$(cat ~/.jarvis/token)"`
+(tap Open). Siri ("ask Jarvis") only works on a real iPhone.
 
 `legacy/` (git-ignored) holds the original 2023 Windows Python version.
