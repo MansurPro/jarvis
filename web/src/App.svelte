@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte'
   import Sphere from './lib/Sphere.svelte'
   import * as api from './lib/api.js'
-  import { startMic, rms, Endpointer } from './lib/mic.js'
+  import { startMic, micCandidates, rms, Endpointer } from './lib/mic.js'
   import { WakeWord } from './lib/wake.js'
   import { Voice } from './lib/voice.js'
 
@@ -27,6 +27,8 @@
   let leader = $state(null) // SVG path from the sphere to the running action
   let coreEl, actsEl
 
+  let micName = $state('')
+  let mic = null, micTried = new Set(), silentFrames = 0, heardSound = false
   let micLevel = 0, endpointer = null, conversing = false, turnDone = true, controller = null, lastWake = 0, uid = 0
 
   const mode = $derived(link.ok === false ? 'offline' : phase)
@@ -69,7 +71,7 @@
     voice.onchange = onVoiceChange
     wakeState = 'asking'
     try {
-      await startMic(onFrame)
+      await openMic(localStorageGet('jarvis-mic')).catch((e) => (e?.name === 'NotAllowedError' ? Promise.reject(e) : openMic())) // a remembered mic may be unplugged
       wakeState = 'loading'
       wake.load().then(() => (wakeState = 'armed')).catch(() => (wakeState = 'error'))
     } catch (e) {
@@ -79,8 +81,36 @@
     if (phase === 'boot') phase = 'idle'
   }
 
+  function localStorageGet(k) { try { return localStorage.getItem(k) } catch { return null } }
+
+  async function openMic(deviceId) {
+    mic?.stop()
+    mic = await startMic(onFrame, deviceId || undefined)
+    micTried.add(mic.deviceId)
+    micName = mic.label
+    silentFrames = 0
+    heardSound = false
+  }
+
+  /** Some inputs (virtual Zoom/Teams devices, a muted interface) send pure silence: move on to the next one. */
+  async function nextMic(manual = false) {
+    if (manual) micTried = new Set([mic?.deviceId])
+    const next = (await micCandidates()).find((d) => !micTried.has(d.deviceId))
+    if (!next) {
+      if (!manual) micError = 'Every microphone is sending silence. Check the input in System Settings → Sound'
+      return
+    }
+    await openMic(next.deviceId)
+  }
+
   function onFrame(frame) {
     micLevel = rms(frame)
+    if (!heardSound) {
+      if (frame.some((v) => v !== 0)) {
+        heardSound = true
+        try { localStorage.setItem('jarvis-mic', mic.deviceId) } catch {}
+      } else if (++silentFrames === 25) nextMic() // 2 s of exact zeros: this input is dead
+    }
     if (wakeState === 'armed') {
       wake.process(frame).then((score) => {
         if (score > 0.5 && performance.now() - lastWake > 1500) onWake()
@@ -359,6 +389,9 @@
   </form>
 
   <div class="corner br">
+    {#if micName}
+      <button class="mic-name" onclick={() => nextMic(true)} title="Switch microphone">Mic · {micName}</button>
+    {/if}
     <span class="label">Wake word</span>
     <span class="readout" class:bad={wakeState === 'error' || micError}>
       {#if micError}Mic blocked{:else if !engaged}Standby{:else if wakeState === 'asking'}Waiting for mic{:else if wakeState === 'armed'}Armed{:else if wakeState === 'loading'}Loading{:else}Off · Space to talk{/if}
@@ -402,6 +435,11 @@
   .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
   .dot.live { background: var(--arc); box-shadow: 0 0 8px var(--arc); }
   .meter { display: flex; gap: 3px; margin-top: 2px; }
+  .mic-name {
+    all: unset; cursor: pointer; color: var(--muted); font: inherit; letter-spacing: inherit; text-transform: inherit;
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;
+  }
+  .mic-name:hover, .mic-name:focus-visible { color: var(--arc); }
   .meter i { width: 5px; height: 10px; background: rgba(99, 227, 255, 0.12); transition: background 0.08s; }
   .meter i.on { background: var(--arc); }
 

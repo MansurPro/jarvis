@@ -20,3 +20,9 @@ assert tool_args({"action": "contacts", "args": {"query": "Kate"}}) == {"query":
 assert tool_args({"action": "contacts", "args": '{"query": "Kate"}'}) == {"query": "Kate"}
 assert tool_args({"action": "battery"}) == {}
 print("phone ok")
+
+from phone import looped  # Whisper hallucination loops are dropped, real requests are kept
+assert looped("in the name of the name of the name of the name of the name of the name of")
+assert not looped("What is the capital of Japan?")
+assert not looped("Open Safari, go to the Apple website, find the newest MacBook and read me its price and battery life")
+print("transcribe ok")

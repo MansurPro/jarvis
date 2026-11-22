@@ -184,7 +184,13 @@ def transcribe(pcm):
         text = mlx_whisper.transcribe(audio, path_or_hf_repo=WHISPER, condition_on_previous_text=False,
                                       initial_prompt="Jarvis, Claude Code, Codex.")["text"].strip()
     print(f"\033[2m  🎙  {text}\033[0m", flush=True)
-    return text
+    return "" if looped(text) else text
+
+
+def looped(text):
+    """Whisper's failure mode on non-speech: one short phrase repeated ("in the name of the name of …")."""
+    words = text.lower().split()
+    return len(words) >= 12 and len(set(words)) / len(words) < 0.35
 
 
 _kokoro, _kokoro_lock = [], threading.Lock()

@@ -16,13 +16,22 @@ class Pcm extends AudioWorkletProcessor {
 }
 registerProcessor('pcm', Pcm)`
 
-export async function startMic(onFrame) {
+/** Inputs to try, best first: the system default, then real devices, then virtual ones (Zoom, Teams, …). */
+export async function micCandidates() {
+  const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput')
+  const virtual = (d) => /virtual|zoom|teams|blackhole|loopback|soundflower|d_d/i.test(d.label)
+  return [...inputs].sort((a, b) => (b.deviceId === 'default') - (a.deviceId === 'default') || virtual(a) - virtual(b))
+}
+
+export async function startMic(onFrame, deviceId) {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error(window.isSecureContext ? 'This browser has no microphone access.' : 'The microphone needs HTTPS (or localhost).')
   }
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true,
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
   })
+  const track = stream.getAudioTracks()[0]
   const ctx = new AudioContext({ sampleRate: 16000 })
   await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })))
   const node = new AudioWorkletNode(ctx, 'pcm')
@@ -31,6 +40,8 @@ export async function startMic(onFrame) {
   mute.gain.value = 0
   ctx.createMediaStreamSource(stream).connect(node).connect(mute).connect(ctx.destination) // keeps the worklet pulled
   return {
+    label: (track?.label || 'Microphone').replace(/^Default - /, '').replace(/ \(Built-in\)$/, ''),
+    deviceId: track?.getSettings().deviceId,
     stop() {
       stream.getTracks().forEach((t) => t.stop())
       ctx.close()
