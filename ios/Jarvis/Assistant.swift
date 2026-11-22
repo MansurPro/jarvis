@@ -80,7 +80,10 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
 
     private func listen() async {
         guard Backend.paired else { log("system", Backend.Failure.notPaired.localizedDescription); return }
-        let speechOK = await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) } }
+        // Only ask for Apple speech recognition if we'll use it; Mac transcription needs just the microphone.
+        let speechOK = useMac ? false : await withCheckedContinuation { c in
+            SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) }
+        }
         let micOK = await AVAudioApplication.requestRecordPermission()
         guard micOK else {
             log("system", "Jarvis needs microphone access. Allow it in Settings → Jarvis.")
@@ -97,6 +100,10 @@ final class Assistant: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
 
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)
+            // No usable input (another app or a call holds the mic, or no device): installTap would raise an exception.
+            guard format.sampleRate > 0, format.channelCount > 0 else {
+                throw Actions.Problem("no microphone input is available right now")
+            }
             if mac {
                 let target = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: true)!
                 guard let conv = AVAudioConverter(from: format, to: target) else { throw Actions.Problem("can't convert microphone audio") }
